@@ -14,11 +14,6 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Fetch all tags
-        run: git fetch --tags origin
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -40,23 +35,22 @@ jobs:
 
       - name: Get version
         id: version
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          echo "Debug: github.ref_type = ${{ github.ref_type }}"
-          echo "Debug: github.ref_name = ${{ github.ref_name }}"
-          echo "Debug: Available tags:"
-          git tag -l
-          echo "Debug: git describe output:"
-          git describe --tags --abbrev=0 || echo "git describe failed"
-
           if [[ "${{ github.ref_type }}" == "tag" ]]; then
             VERSION="${{ github.ref_name }}"
           else
-            VERSION=$(git describe --tags --abbrev=0 2>/dev/null || echo "latest")
+            VERSION=$(gh release view --json tagName -q .tagName)
+            if [[ -z "$VERSION" ]]; then
+              echo "::error::No GitHub release found. Cannot determine version."
+              exit 1
+            fi
           fi
-          echo "Debug: VERSION = $VERSION"
           VERSION_UNDERNAME=$(echo "$VERSION" | sed 's/\./-/g')
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "undername=$VERSION_UNDERNAME" >> $GITHUB_OUTPUT
+          echo "Deploying version: $VERSION (undername: $VERSION_UNDERNAME)"
 
       - name: Deploy to version undername
         run: |
