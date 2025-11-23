@@ -1,0 +1,66 @@
+name: Build and Deploy to ArNS
+
+on:
+  release:
+    types: [published]
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 9
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build static site
+        run: pnpm run build
+        env:
+          NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID: ${{ secrets.WALLETCONNECT_PROJECT_ID }}
+
+      - name: Transform version to undername format
+        id: version
+        run: |
+          VERSION_UNDERNAME=$(echo "${{ github.ref_name }}" | sed 's/\./-/g')
+          echo "undername=$VERSION_UNDERNAME" >> $GITHUB_OUTPUT
+
+      - name: Deploy to version undername
+        run: |
+          npx permaweb-deploy \
+            --arns-name ${{ secrets.ARNS_NAME }} \
+            --undername ${{ steps.version.outputs.undername }} \
+            --deploy-folder ./out \
+            --sig-type ethereum
+        env:
+          DEPLOY_KEY: ${{ secrets.ARNS_DEPLOY_KEY }}
+
+      - name: Deploy to root ArNS name
+        run: |
+          npx permaweb-deploy \
+            --arns-name ${{ secrets.ARNS_NAME }} \
+            --undername @ \
+            --deploy-folder ./out \
+            --sig-type ethereum
+        env:
+          DEPLOY_KEY: ${{ secrets.ARNS_DEPLOY_KEY }}
+
+      - name: Output ArNS URLs
+        run: |
+          echo "::notice title=ArNS Deployment::Successfully deployed to ArNS!"
+          echo "::notice title=Version URL::https://${{ steps.version.outputs.undername }}_${{ secrets.ARNS_NAME }}.arweave.net"
+          echo "::notice title=Latest URL::https://${{ secrets.ARNS_NAME }}.arweave.net"
