@@ -7,10 +7,6 @@ on:
     tags:
       - 'v*'
   workflow_dispatch:
-    inputs:
-      version:
-        description: 'Version to deploy (e.g., v0.2.0)'
-        required: true
 
 jobs:
   build-and-deploy:
@@ -37,11 +33,16 @@ jobs:
         env:
           NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID: ${{ secrets.WALLETCONNECT_PROJECT_ID }}
 
-      - name: Transform version to undername format
+      - name: Get version
         id: version
         run: |
-          VERSION="${{ inputs.version || github.ref_name }}"
+          if [[ "${{ github.ref_type }}" == "tag" ]]; then
+            VERSION="${{ github.ref_name }}"
+          else
+            VERSION=$(git describe --tags --abbrev=0 2>/dev/null || echo "latest")
+          fi
           VERSION_UNDERNAME=$(echo "$VERSION" | sed 's/\./-/g')
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "undername=$VERSION_UNDERNAME" >> $GITHUB_OUTPUT
 
       - name: Deploy to version undername
