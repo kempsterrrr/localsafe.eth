@@ -39,11 +39,19 @@ jobs:
       - name: Get version
         id: version
         run: |
+          echo "Debug: github.ref_type = ${{ github.ref_type }}"
+          echo "Debug: github.ref_name = ${{ github.ref_name }}"
+          echo "Debug: Available tags:"
+          git tag -l
+          echo "Debug: git describe output:"
+          git describe --tags --abbrev=0 || echo "git describe failed"
+
           if [[ "${{ github.ref_type }}" == "tag" ]]; then
             VERSION="${{ github.ref_name }}"
           else
             VERSION=$(git describe --tags --abbrev=0 2>/dev/null || echo "latest")
           fi
+          echo "Debug: VERSION = $VERSION"
           VERSION_UNDERNAME=$(echo "$VERSION" | sed 's/\./-/g')
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "undername=$VERSION_UNDERNAME" >> $GITHUB_OUTPUT
