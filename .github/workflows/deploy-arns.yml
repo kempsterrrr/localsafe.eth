@@ -7,6 +7,10 @@ on:
     tags:
       - 'v*'
   workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to deploy (e.g., v0.2.0)'
+        required: true
 
 jobs:
   build-and-deploy:
@@ -36,7 +40,8 @@ jobs:
       - name: Transform version to undername format
         id: version
         run: |
-          VERSION_UNDERNAME=$(echo "${{ github.ref_name }}" | sed 's/\./-/g')
+          VERSION="${{ inputs.version || github.ref_name }}"
+          VERSION_UNDERNAME=$(echo "$VERSION" | sed 's/\./-/g')
           echo "undername=$VERSION_UNDERNAME" >> $GITHUB_OUTPUT
 
       - name: Deploy to version undername
